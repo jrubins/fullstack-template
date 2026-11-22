@@ -26,7 +26,8 @@ Replace it with your own features.
 ```
 apps/
   api/        Express API. src/ is the app; api/index.ts is the Vercel Function entry
-  web/        React SPA. src/routes is file-based routing; src/components/ui is shadcn
+  web/        React SPA. src/routes (routing only) → src/pages (page components);
+              src/features (feature UI and data hooks); src/components/ui is shadcn
 packages/
   shared/     Zod schemas and types shared by the API and web (the API contract)
   db/         Prisma contract, migrations and the database client
@@ -78,6 +79,17 @@ API validates input with them. The web app validates responses (`apiRequest`) an
 **API layers.** `routes` (HTTP and validation) → `service` (logic) → `db`. Throw `HttpError`
 for expected failures. The error handler turns anything thrown into
 `{ error: { code, message, details? } }` and hides internals on 5xx.
+
+**Routes vs pages.** Route files in `apps/web/src/routes` only declare the route: path, data
+loading and which page to render. The page component lives in `src/pages`. That keeps
+React Fast Refresh working (it needs files that export only components) and is enforced by
+`react-refresh/only-export-components`.
+
+**No code-only escape hatches.** There are no `.js` files: configs are TypeScript too
+(`eslint.config.ts`, checked through `tsconfig.config.json`). Unused variables and parameters
+are errors with no `_`-prefix exemption. ESLint owns this check, because TypeScript's
+`noUnused*` options always exempt `_` names. The one allowance is ESLint's default: an unused
+parameter is fine when a later one is used, as in Express's `(req, res) => ...`.
 
 **Adding UI components.** `pnpm dlx shadcn@latest add <component>` from `apps/web`. Current
 shadcn components import `cn` from the [`cn`](https://github.com/shadcn-ui/cn) package

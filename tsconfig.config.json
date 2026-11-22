@@ -1,0 +1,9 @@
+{
+  // Root-level tooling config written in TypeScript (ESLint).
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "tsBuildInfoFile": "./node_modules/.tmp/config.tsbuildinfo"
+  },
+  "include": ["eslint.config.ts"]
+}

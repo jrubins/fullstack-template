@@ -14,7 +14,13 @@ function middlewareStatus(err: unknown): number | undefined {
 }
 
 /** Turns any thrown error into the shared `ApiError` JSON shape. Hides internals on 5xx. */
-export const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
+export const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
+  // A response that has already started can't be replaced with JSON: let Express end it.
+  if (res.headersSent) {
+    next(err);
+    return;
+  }
+
   let status = 500;
   let body: ApiError = { error: { code: 'internal_error', message: 'Something went wrong' } };
 

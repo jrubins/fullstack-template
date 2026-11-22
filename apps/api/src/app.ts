@@ -31,7 +31,7 @@ export function createApp({ config, db, logger }: AppDeps): Express {
 
   // On Vercel, keep the function alive until Sentry has sent this request's events.
   if (config.VERCEL && config.SENTRY_DSN) {
-    app.use((_req, res, next) => {
+    app.use((req, res, next) => {
       res.on('finish', () => waitUntil(Sentry.flush(2000)));
       next();
     });

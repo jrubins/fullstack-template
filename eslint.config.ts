@@ -1,6 +1,6 @@
-// @ts-check
 import js from '@eslint/js';
 import prettier from 'eslint-config-prettier';
+import type { Linter } from 'eslint';
 import { defineConfig, globalIgnores } from 'eslint/config';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
@@ -27,35 +27,33 @@ export default defineConfig([
       parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname },
     },
     rules: {
-      '@typescript-eslint/no-unused-vars': [
-        'error',
-        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
-      ],
       '@typescript-eslint/consistent-type-imports': 'error',
     },
   },
 
-  // Plain JS config files: no type information.
   {
-    files: ['**/*.js'],
-    extends: [js.configs.recommended],
+    files: ['apps/api/**', 'packages/**', 'eslint.config.ts'],
     languageOptions: { globals: globals.node },
   },
-
-  { files: ['apps/api/**', 'packages/**'], languageOptions: { globals: globals.node } },
 
   {
     files: ['apps/web/**/*.{ts,tsx}'],
     extends: [reactHooks.configs.flat['recommended-latest'], reactRefresh.configs.vite],
     languageOptions: { globals: globals.browser },
-  },
-  {
-    // Route files export `Route` objects; shadcn files export variants next to components.
-    files: ['apps/web/src/routes/**', 'apps/web/src/components/ui/**'],
-    rules: { 'react-refresh/only-export-components': 'off' },
+    rules: {
+      // Fast Refresh keeps component state only for files that export just components.
+      // Allowed exceptions: TanStack Router's `Route` (its Vite plugin splits the component
+      // out) and shadcn's style variants exported next to their component.
+      'react-refresh/only-export-components': [
+        'error',
+        { allowExportNames: ['Route', 'buttonVariants', 'badgeVariants'] },
+      ],
+    },
   },
 
-  storybook.configs['flat/recommended'],
+  // eslint-plugin-storybook 10.6 types its rules against older ESLint typings than ESLint 10's;
+  // the config itself is valid at runtime.
+  storybook.configs['flat/recommended'] as unknown as Linter.Config[],
 
   // Must stay last: turns off rules that conflict with Prettier.
   prettier,

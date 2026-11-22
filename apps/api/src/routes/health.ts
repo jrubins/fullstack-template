@@ -5,7 +5,7 @@ import type { Health } from '@app/shared';
 export function healthRouter(db: Db, version: string): Router {
   const router = Router();
 
-  router.get('/', async (_req, res) => {
+  router.get('/', async (req, res) => {
     const databaseUp = await db.ping();
     const body: Health = {
       status: databaseUp ? 'ok' : 'degraded',

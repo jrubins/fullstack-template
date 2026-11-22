@@ -6,7 +6,7 @@ import type { ItemsService } from './items.service.ts';
 export function itemsRouter(items: ItemsService): Router {
   const router = Router();
 
-  router.get('/', async (_req, res) => {
+  router.get('/', async (req, res) => {
     res.json(await items.list());
   });
 

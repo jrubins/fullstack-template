@@ -14,8 +14,8 @@
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
     "noFallthroughCasesInSwitch": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
+    // Unused code is reported by ESLint (no-unused-vars, no ignore patterns). TypeScript's own
+    // checks are off because they always exempt `_`-prefixed names.
 
     "erasableSyntaxOnly": true,
     "verbatimModuleSyntax": true,
