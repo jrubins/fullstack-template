@@ -119,6 +119,8 @@ export default defineConfig([
     '**/test-results',
     '**/playwright-report',
     'packages/db/migrations',
+    // Agent skills linked from dependencies by pnpm (third-party files).
+    '.claude/skills',
     'packages/db/src/contract.d.ts',
   ]),
 

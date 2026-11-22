@@ -188,5 +188,7 @@ Vercel uses Node 26 from the `engines` field in each package.json.
   typings (e.g. helmet). Our own `tsc` already checks types.
 - **`pg` is overridden to 8.23.1** in `pnpm-workspace.yaml`, because Prisma 8 RC pins older
   versions. One copy also means one thing for Sentry to instrument.
-- **pnpm 12 blocks install scripts** unless approved: only `esbuild` is allowed
-  (`allowBuilds`). Prisma's AI-agent skills are declined (`permissions`).
+- **pnpm 12 asks before dependencies do anything extra.** Only `esbuild` may run an install
+  script (`allowBuilds`). Agent skills from Prisma 8 (ORM), TanStack Router and TanStack
+  Charts are approved and linked into `.claude/skills/`; the Prisma Platform skill is
+  declined (`permissions`).

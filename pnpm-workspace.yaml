@@ -17,19 +17,19 @@ catalog:
 allowBuilds:
   esbuild: true
 
-permissions:
-  '@prisma/orm-postgres':
-    skills: false
-  '@tanstack/charts':
-    skills: false
-  '@tanstack/react-router':
-    skills: false
-  '@tanstack/router-plugin':
-    skills: false
-  prisma:
-    skills: false
-
 # Prisma 8 RC pins older pg versions; use one current copy everywhere (also what Sentry instruments).
 overrides:
   pg: 8.23.1
   '@types/pg': 8.23.1
+
+permissions:
+  '@prisma/orm-postgres':
+    skills: true
+  '@tanstack/charts':
+    skills: true
+  '@tanstack/react-router':
+    skills: true
+  '@tanstack/router-plugin':
+    skills: true
+  prisma:
+    skills: false

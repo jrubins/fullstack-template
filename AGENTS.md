@@ -169,6 +169,13 @@ Web tests are colocated (`*.test.ts(x)`) and test components through what users 
 
 ## Library notes (APIs newer than most training data)
 
+**Library skills.** Prisma 8 (`@prisma/orm-postgres`), TanStack Router, its Vite plugin and
+TanStack Charts ship agent skills written for the exact installed version. `pnpm install`
+links them into `.claude/skills/` (Claude Code loads them automatically; the links are not
+committed). Other agents can read the same files at `node_modules/<package>/skills/`. When a
+skill and your memory disagree, the skill wins. The Prisma _Platform_ skill (`prisma`
+package) is deliberately declined: we host on Vercel and Neon, not Prisma's platform.
+
 - **Prisma ORM 8 (RC)** is not Prisma 5/6/7. The schema is a "contract"
   (`contract.prisma`, first line `// use prisma-8`). Queries use the collection API:
   `db.orm.public.Item.where({ id }).first()`, `.orderBy([(i) => i.createdAt.desc(), ...])`,
@@ -183,7 +190,8 @@ scales })`; pass a configured scale instance (`scaleLinear().domain([0, max])`) 
 - **Sentry 11:** logs and metrics are on by default (no `enableLogs`). `sendDefaultPii` was
   replaced by `dataCollection`. Custom metrics: `Sentry.metrics.count(name, value)`.
 - **pnpm 12:** install scripts and packages' AI-agent skills need explicit approval
-  (`allowBuilds`, `permissions` in `pnpm-workspace.yaml`). Node 26 doesn't bundle corepack.
+  (`allowBuilds`, `permissions` in `pnpm-workspace.yaml`); review a package's `skills/`
+  folder before approving it. Node 26 doesn't bundle corepack.
 - **TypeScript 7** (`typescript7` alias) runs `pnpm typecheck`; the `typescript` package is
   6.x because ESLint and Storybook need its compiler API.
 - **shadcn/ui** components import `cn` from the `cn` package (shadcn's replacement for
