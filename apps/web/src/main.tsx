@@ -3,6 +3,8 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { RouterProvider } from '@tanstack/react-router';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { AuthProvider } from './components/auth-provider';
+import { SessionGate } from './components/session-gate';
 import { initSentry } from './lib/sentry';
 import { queryClient, router } from './router';
 import './index.css';
@@ -20,7 +22,11 @@ createRoot(root, {
 }).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
+      <AuthProvider>
+        <SessionGate>
+          <RouterProvider router={router} />
+        </SessionGate>
+      </AuthProvider>
     </QueryClientProvider>
   </StrictMode>,
 );

@@ -1,6 +1,8 @@
-import { expect, test } from './fixtures.ts';
+import { expect, test, unique } from './fixtures.ts';
 
-test('home page shows API status and the items chart', async ({ page, capture }) => {
+test('home page shows API status and the items chart', async ({ page, api, capture }) => {
+  // A new user has no items (and so no chart): give this one an item first.
+  await api.post('/items', { data: { name: unique('Squat') } });
   await page.goto('/');
 
   await expect(page.getByRole('heading', { level: 1, name: 'Overview' })).toBeVisible();

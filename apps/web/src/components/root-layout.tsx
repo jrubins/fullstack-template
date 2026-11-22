@@ -1,11 +1,14 @@
 import { Link, Outlet, type ErrorComponentProps } from '@tanstack/react-router';
 import { lazy, Suspense } from 'react';
 import { Button } from '@/components/ui/button';
+import { useSession } from '@/lib/session';
+import { UserMenu } from './user-menu';
 
 // Devtools are loaded only in development and never shipped in production bundles.
 const Devtools = import.meta.env.DEV ? lazy(() => import('@/components/devtools')) : () => null;
 
 export function RootLayout() {
+  const { user, signOut } = useSession();
   return (
     <div className="mx-auto min-h-screen max-w-3xl px-4 py-8">
       <header className="mb-8 flex items-center gap-6">
@@ -18,6 +21,7 @@ export function RootLayout() {
             Items
           </Link>
         </nav>
+        {user ? <UserMenu user={user} onSignOut={signOut} /> : null}
       </header>
       <main>
         <Outlet />

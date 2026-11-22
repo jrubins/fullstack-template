@@ -8,6 +8,9 @@ export const API_URL = `http://localhost:${API_PORT}`;
 
 const testDatabaseUrl = process.env['TEST_DATABASE_URL'];
 if (!testDatabaseUrl) throw new Error('TEST_DATABASE_URL is not set (see .env.example)');
+// Lets each test sign in as its own user through the API's dev-only POST /auth/dev-token.
+const authTestSecret = process.env['AUTH_TEST_SECRET'];
+if (!authTestSecret) throw new Error('AUTH_TEST_SECRET is not set (see .env.example)');
 
 const isCI = Boolean(process.env['CI']);
 
@@ -38,6 +41,11 @@ export default defineConfig({
         CORS_ORIGINS: `http://localhost:${WEB_PORT}`,
         SENTRY_DSN: '',
         LOG_LEVEL: 'warn',
+        AUTH_TEST_SECRET: authTestSecret,
+        // Test sign-in only: never call WorkOS from tests.
+        WORKOS_CLIENT_ID: '',
+        AUTHKIT_DOMAIN: '',
+        ALLOWED_USER_IDS: '',
       },
       reuseExistingServer: !isCI,
       timeout: 120_000,
@@ -46,7 +54,7 @@ export default defineConfig({
       name: 'web',
       command: `pnpm --filter @app/web exec vite --port ${WEB_PORT} --strictPort`,
       url: `http://localhost:${WEB_PORT}`,
-      env: { VITE_API_URL: API_URL, VITE_SENTRY_DSN: '' },
+      env: { VITE_API_URL: API_URL, VITE_SENTRY_DSN: '', VITE_WORKOS_CLIENT_ID: '' },
       reuseExistingServer: !isCI,
       timeout: 120_000,
     },

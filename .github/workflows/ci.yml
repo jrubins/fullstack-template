@@ -35,6 +35,8 @@ jobs:
     env:
       DATABASE_URL: postgresql://app:app@localhost:5432/app_test
       TEST_DATABASE_URL: postgresql://app:app@localhost:5432/app_test
+      # Test-only token signing for API and end-to-end tests (never set in production).
+      AUTH_TEST_SECRET: ci-only-test-secret-0123456789abcdefghij
       PRISMA_DISABLE_TELEMETRY: '1'
       STORYBOOK_DISABLE_TELEMETRY: '1'
 

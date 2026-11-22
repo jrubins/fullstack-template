@@ -1,7 +1,7 @@
 import { ApiErrorSchema, HealthSchema } from '@app/shared';
 import request from 'supertest';
 import { afterAll, describe, expect, it } from 'vitest';
-import { createTestApp } from './helpers.ts';
+import { bearer, createTestApp, uniqueUserId } from './helpers.ts';
 
 const { app, db } = createTestApp();
 
@@ -17,9 +17,16 @@ describe('GET /health', () => {
 });
 
 describe('unknown routes', () => {
-  it('return a JSON 404', async () => {
-    const res = await request(app).get('/nope').expect(404);
+  it('return a JSON 404 to signed-in users', async () => {
+    const res = await request(app)
+      .get('/nope')
+      .set('Authorization', await bearer(uniqueUserId()))
+      .expect(404);
     expect(ApiErrorSchema.parse(res.body).error.code).toBe('not_found');
+  });
+
+  it('require sign-in first, so they reveal nothing about the API', async () => {
+    await request(app).get('/nope').expect(401);
   });
 });
 

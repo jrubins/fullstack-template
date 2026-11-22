@@ -23,7 +23,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'4a77cc818b393af6590c68504ecc9005aca817a9cfacb3a9e5dee0ffdfeb83d7'>;
+  StorageHashBase<'d66c50f1ad3d9edd716db2f69f1e229877832c8c35121487a8f8e43df1253466'>;
 export type ExecutionHash =
   ExecutionHashBase<'d388457b28c2848c8802c3f452f18b5904772d0acccd84bc3c8e1aa5e02d2104'>;
 export type ProfileHash =
@@ -314,6 +314,7 @@ export namespace Models {
     id: FieldOutputTypes['public']['Item']['id'];
     name: FieldOutputTypes['public']['Item']['name'];
     updatedAt: FieldOutputTypes['public']['Item']['updatedAt'];
+    userId: FieldOutputTypes['public']['Item']['userId'];
     readonly [RelationKeys]?: never;
   };
 }
@@ -375,10 +376,23 @@ type ContractBase = Omit<
                   readonly typeParams: { readonly precision: 3 };
                   readonly many: false;
                 };
+                readonly userId: {
+                  readonly dataType: 'pg/text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                  readonly many: false;
+                };
               };
               primaryKey: { readonly columns: readonly ['id'] };
               uniques: readonly [];
-              indexes: readonly [];
+              indexes: readonly [
+                {
+                  readonly name: 'Item_userId_createdAt_idx_f726f04a';
+                  readonly prefix: 'Item_userId_createdAt_idx';
+                  readonly columns: readonly ['userId', 'createdAt'];
+                  readonly unique: false;
+                },
+              ];
               foreignKeys: readonly [];
             };
           };
@@ -424,6 +438,10 @@ type ContractBase = Omit<
                   readonly typeParams: { readonly precision: 3 };
                 };
               };
+              readonly userId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
             };
             readonly relations: Record<string, never>;
             readonly storage: {
@@ -434,6 +452,7 @@ type ContractBase = Omit<
                 readonly id: { readonly column: 'id' };
                 readonly name: { readonly column: 'name' };
                 readonly updatedAt: { readonly column: 'updatedAt' };
+                readonly userId: { readonly column: 'userId' };
               };
             };
           };

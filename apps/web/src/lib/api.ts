@@ -1,6 +1,7 @@
 import { ApiErrorSchema } from '@app/shared';
 import type { z } from 'zod';
 import { env } from './env';
+import { currentAccessToken } from './session';
 
 /** A failed API call, carrying the API's error code (see ApiErrorSchema in @app/shared). */
 export class ApiRequestError extends Error {
@@ -18,8 +19,9 @@ export class ApiRequestError extends Error {
 }
 
 /**
- * Calls the API and validates the response with a shared Zod schema, so a contract mismatch
- * fails loudly here instead of deep in the UI. Pass `null` as the schema for empty responses.
+ * Calls the API as the signed-in user and validates the response with a shared Zod schema, so a
+ * contract mismatch fails loudly here instead of deep in the UI. Pass `null` as the schema for
+ * empty responses.
  */
 export async function apiRequest<T extends z.ZodType | null>(
   path: string,
@@ -28,6 +30,8 @@ export async function apiRequest<T extends z.ZodType | null>(
 ): Promise<T extends z.ZodType ? z.infer<T> : void> {
   const headers = new Headers(init.headers);
   if (init.body !== undefined) headers.set('content-type', 'application/json');
+  const token = await currentAccessToken();
+  if (token) headers.set('authorization', `Bearer ${token}`);
 
   const res = await fetch(`${env.apiUrl}${path}`, { ...init, headers });
 

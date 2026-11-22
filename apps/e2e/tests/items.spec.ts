@@ -1,5 +1,4 @@
 import { ItemSchema } from '@app/shared';
-import { API_URL } from '../playwright.config.ts';
 import { expect, test, unique } from './fixtures.ts';
 
 test.describe('items page', () => {
@@ -23,10 +22,10 @@ test.describe('items page', () => {
     await expect(page.getByText('Name is required')).toBeVisible();
   });
 
-  test('deletes an item', async ({ page, request }) => {
+  test('deletes an item', async ({ page, api }) => {
     // Set up through the API (fast), test the behaviour through the UI.
     const name = unique('Bench');
-    const res = await request.post(`${API_URL}/items`, { data: { name } });
+    const res = await api.post('/items', { data: { name } });
     const item = ItemSchema.parse(await res.json());
 
     await page.goto('/items');

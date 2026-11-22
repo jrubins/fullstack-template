@@ -6,6 +6,11 @@ const rate = (value: string | undefined, fallback: number) => {
 /** Browser configuration from VITE_* variables (baked in at build time). */
 export const env = {
   apiUrl: (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace(/\/$/, ''),
+  workos: {
+    /** Empty: AuthKit is off, and development builds use the dev-only test sign-in. */
+    clientId: import.meta.env.VITE_WORKOS_CLIENT_ID || undefined,
+    apiHostname: import.meta.env.VITE_WORKOS_API_HOSTNAME || undefined,
+  },
   sentry: {
     dsn: import.meta.env.VITE_SENTRY_DSN || undefined,
     environment: import.meta.env.VITE_SENTRY_ENVIRONMENT || import.meta.env.MODE,

@@ -19,7 +19,8 @@ lints every file Claude edits.
 | Language       | TypeScript 7 (native compiler) for type-checking; TypeScript 6 only for typed lint rules              |
 | Web            | React 19, Vite 8, TanStack Router, Query, Form and Charts, Tailwind CSS 4, shadcn/ui                  |
 | Component docs | Storybook 10 (with the accessibility addon)                                                           |
-| API            | Express 5, Zod 4, pino, helmet                                                                        |
+| API            | Express 5, Zod 4, pino, helmet; an MCP server (`/mcp`) so AI assistants like Claude can use the app   |
+| Auth           | WorkOS AuthKit: web sign-in, and OAuth for MCP clients (Claude custom connectors)                     |
 | Database       | Postgres 19, Prisma ORM 8 (release candidate)                                                         |
 | Env/secrets    | dotenvx                                                                                               |
 | Monitoring     | Sentry: errors, tracing, logs and metrics (API); errors, tracing and session replay (web)             |
@@ -124,7 +125,8 @@ pnpm --filter @app/db migration:plan --name <x>  # write a migration from the co
 pnpm db:migrate                                  # apply it
 ```
 
-Commit the contract, the emitted files and the migration. CI fails if the emitted files are
+`migration:plan` always plans from the latest committed migration. Commit the contract, the
+emitted files and the migration. CI fails if the emitted files are
 stale, or if the contract has changes that no migration covers (`prisma db verify`).
 Prisma's CLI telemetry and AI-agent skill prompts are switched off in `packages/db/prisma.env`.
 
@@ -133,6 +135,40 @@ Prisma's CLI telemetry and AI-agent skill prompts are switched off in `packages/
 Everything is listed with comments in `.env.example`. Locally, dotenvx loads `.env` into each
 script. Only `VITE_*` variables reach the browser. To commit secrets safely instead of keeping
 a local file, use `pnpm exec dotenvx encrypt` and keep `.env.keys` out of git (it's ignored).
+
+## Auth (WorkOS AuthKit)
+
+Every API route requires a signed-in user except `/health` and the MCP discovery documents.
+Data is per user: rows carry the user's ID (`userId`) and services always filter by it.
+
+- **Web:** AuthKit's React SDK signs users in; `apiRequest` sends the access token.
+- **MCP (`POST /mcp`):** Claude and other MCP clients sign in through AuthKit as an OAuth
+  server. The API publishes `/.well-known/oauth-protected-resource/mcp` naming AuthKit, and
+  accepts AuthKit tokens whose audience is `MCP_RESOURCE_URL`.
+- **Without a WorkOS account** (local development, tests): leave `WORKOS_CLIENT_ID` empty. The
+  API then accepts test tokens signed with `AUTH_TEST_SECRET`, the web app (development builds
+  only) shows a "sign in as any user ID" screen, and every test signs in as its own user. The
+  API refuses to start with `AUTH_TEST_SECRET` in production.
+- **Single-user apps:** set `ALLOWED_USER_IDS` to your WorkOS user ID.
+
+### Setting up WorkOS
+
+1. Create a free account at workos.com and an AuthKit application.
+2. **Redirects:** add your web URLs (`http://localhost:5173`, then the deployed URL) as
+   Redirect URIs, and `<web URL>/login` as the **Initiate login URI**.
+3. **Authentication:** add the web URLs as allowed origins (the SPA calls WorkOS directly).
+4. **Connect → Configuration:** enable **Client ID Metadata Document** (how Claude registers)
+   and **Dynamic Client Registration** (older MCP clients).
+5. **Resource Indicators:** add your MCP URL (e.g. `https://api.example.com/mcp`) and set it
+   as the default.
+6. Set `WORKOS_CLIENT_ID` and `VITE_WORKOS_CLIENT_ID` (Developer → API Keys), `AUTHKIT_DOMAIN`
+   (e.g. `https://your-app.authkit.app`) and `MCP_RESOURCE_URL`.
+
+### Connecting Claude
+
+In claude.ai: **Settings → Connectors → Add custom connector**, with your deployed MCP URL
+(e.g. `https://api.example.com/mcp`). Claude discovers AuthKit, you sign in once, and every
+chat can use the tools defined in `apps/api/src/features/mcp/mcp.tools.ts`.
 
 ## Monitoring (Sentry)
 
@@ -157,10 +193,12 @@ Sentry stays off until a DSN is set (`SENTRY_DSN` for the API, `VITE_SENTRY_DSN`
 Create **two Vercel projects** from this repo:
 
 1. **Web:** Root Directory `apps/web`. Settings come from `apps/web/vercel.json`. Set
-   `VITE_API_URL` (the API's URL) and the `VITE_SENTRY_*` variables.
+   `VITE_API_URL` (the API's URL), `VITE_WORKOS_CLIENT_ID` and the `VITE_SENTRY_*` variables.
 2. **API:** Root Directory `apps/api`. Settings come from `apps/api/vercel.json` (every path
    goes to the Express app in `api/index.ts`). Set `DATABASE_URL` (Neon's **pooled**
-   connection string), `CORS_ORIGINS` (the web URL) and the `SENTRY_*` variables.
+   connection string), `CORS_ORIGINS` (the web URL), `WORKOS_CLIENT_ID`, `AUTHKIT_DOMAIN`,
+   `MCP_RESOURCE_URL` (`<API URL>/mcp`), optionally `ALLOWED_USER_IDS`, and the `SENTRY_*`
+   variables. Never set `AUTH_TEST_SECRET` there.
 
 **Database:** create a Neon project on Postgres 19, preferably through Vercel's Neon
 integration, which can give each preview deployment its own database branch. Run migrations
