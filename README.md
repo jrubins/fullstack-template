@@ -95,6 +95,18 @@ parameter is fine when a later one is used, as in Express's `(req, res) => ...`.
 shadcn components import `cn` from the [`cn`](https://github.com/shadcn-ui/cn) package
 (shadcn's replacement for clsx + tailwind-merge).
 
+**API tests share one database and run in parallel.** Tests use the real API and a real
+Postgres (`TEST_DATABASE_URL`), migrated once per run. Nothing is cleaned up between tests,
+so every test must:
+
+- create the rows it needs, with unique values (`unique('label')` in `apps/api/test/helpers.ts`)
+- assert only on rows it created: `toContainEqual(item)`, never `toEqual([...])` or counts
+- never delete or update rows it didn't create
+
+This keeps test files independent, so they can run in parallel and even run concurrently
+with other test runs against the same database. Queries that tests rely on for ordering need
+a deterministic tie-breaker (e.g. `createdAt` then `id`).
+
 ## Database workflow (Prisma 8)
 
 The schema is the _contract_ in `packages/db/src/contract.prisma`.

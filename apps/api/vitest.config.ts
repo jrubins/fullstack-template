@@ -5,7 +5,8 @@ export default defineConfig({
     environment: 'node',
     include: ['test/**/*.test.ts'],
     globalSetup: ['./test/global-setup.ts'],
-    // Tests share one database, so run files one at a time.
-    fileParallelism: false,
+    // Test files run in parallel against one shared database. That is safe because tests
+    // never delete or count other tests' rows: each one creates its own data with unique
+    // values (see `unique()` in test/helpers.ts) and asserts only on that data.
   },
 });

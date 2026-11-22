@@ -15,7 +15,11 @@ const toItem = (row: ItemRow): Item => ({
 export function createItemsService(db: Db) {
   return {
     async list(): Promise<Item[]> {
-      const rows = await db.orm.public.Item.orderBy((item) => item.createdAt.desc())
+      // Newest first; id breaks ties between rows created in the same millisecond.
+      const rows = await db.orm.public.Item.orderBy([
+        (item) => item.createdAt.desc(),
+        (item) => item.id.desc(),
+      ])
         .limit(100)
         .all();
       return rows.map(toItem);

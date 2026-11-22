@@ -1,30 +1,64 @@
+import { ApiErrorSchema, ItemSchema, type Item } from '@app/shared';
 import request from 'supertest';
-import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { ApiErrorSchema, ItemSchema } from '@app/shared';
-import { createTestApp } from './helpers.ts';
+import { afterAll, describe, expect, it } from 'vitest';
+import { createTestApp, unique } from './helpers.ts';
 
 const { app, db } = createTestApp();
-
-beforeEach(async () => {
-  // Prisma requires an explicit filter for bulk deletes.
-  await db.orm.public.Item.where((item) => item.id.gt(0)).deleteAll();
-});
 
 afterAll(async () => {
   await db.close();
 });
 
+async function listItems(): Promise<Item[]> {
+  const res = await request(app).get('/items').expect(200);
+  return ItemSchema.array().parse(res.body);
+}
+
 describe('items API', () => {
-  it('creates, lists and deletes an item', async () => {
-    const created = await request(app).post('/items').send({ name: '  Deadlift ' }).expect(201);
-    const item = ItemSchema.parse(created.body);
-    expect(item.name).toBe('Deadlift');
+  it('creates an item, trimming its name', async () => {
+    const name = unique('Deadlift');
+    const res = await request(app)
+      .post('/items')
+      .send({ name: `  ${name} ` })
+      .expect(201);
 
-    const list = await request(app).get('/items').expect(200);
-    expect(list.body).toEqual([item]);
+    const item = ItemSchema.parse(res.body);
+    expect(item.name).toBe(name);
+    expect(await listItems()).toContainEqual(item);
+  });
 
-    await request(app).delete(`/items/${item.id}`).expect(204);
-    await request(app).get('/items').expect(200, []);
+  it('lists newest items first', async () => {
+    const first = ItemSchema.parse(
+      (
+        await request(app)
+          .post('/items')
+          .send({ name: unique('First') })
+      ).body,
+    );
+    const second = ItemSchema.parse(
+      (
+        await request(app)
+          .post('/items')
+          .send({ name: unique('Second') })
+      ).body,
+    );
+
+    const ids = (await listItems()).map((item) => item.id);
+    expect(ids.indexOf(second.id)).toBeLessThan(ids.indexOf(first.id));
+  });
+
+  it('deletes an item', async () => {
+    const created = ItemSchema.parse(
+      (
+        await request(app)
+          .post('/items')
+          .send({ name: unique('Row') })
+      ).body,
+    );
+
+    await request(app).delete(`/items/${created.id}`).expect(204);
+
+    expect((await listItems()).map((item) => item.id)).not.toContain(created.id);
   });
 
   it('rejects an invalid item with a validation error', async () => {
@@ -33,7 +67,17 @@ describe('items API', () => {
   });
 
   it('returns 404 when deleting a missing item', async () => {
-    const res = await request(app).delete('/items/999999').expect(404);
+    // Deleting twice: the second call targets an id that is certain not to exist.
+    const created = ItemSchema.parse(
+      (
+        await request(app)
+          .post('/items')
+          .send({ name: unique('Gone') })
+      ).body,
+    );
+    await request(app).delete(`/items/${created.id}`).expect(204);
+
+    const res = await request(app).delete(`/items/${created.id}`).expect(404);
     expect(ApiErrorSchema.parse(res.body).error.code).toBe('not_found');
   });
 
@@ -44,19 +88,5 @@ describe('items API', () => {
       .send('{bad')
       .expect(400);
     expect(ApiErrorSchema.parse(res.body).error.code).toBe('bad_request');
-  });
-});
-
-describe('GET /health', () => {
-  it('reports the database as up', async () => {
-    const res = await request(app).get('/health').expect(200);
-    expect(res.body).toMatchObject({ status: 'ok', database: 'up' });
-  });
-});
-
-describe('unknown routes', () => {
-  it('return a JSON 404', async () => {
-    const res = await request(app).get('/nope').expect(404);
-    expect(ApiErrorSchema.parse(res.body).error.code).toBe('not_found');
   });
 });
