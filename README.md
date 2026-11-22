@@ -5,6 +5,11 @@ Functions, Postgres on Neon, and Sentry for errors, tracing, logs and metrics.
 The example "items" feature runs through every layer, so the wiring is easy to follow.
 Replace it with your own features.
 
+**Working with AI agents:** [`AGENTS.md`](AGENTS.md) holds the working rules: architecture,
+the add-a-feature checklist, testing rules and notes on library APIs newer than most models'
+training data. `CLAUDE.md` imports it for Claude Code, and `.claude/settings.json` formats and
+lints every file Claude edits.
+
 ## Stack
 
 | Area           | Choice                                                                                    |

@@ -7,10 +7,11 @@ import { pinoHttp } from 'pino-http';
 import type { Logger } from 'pino';
 import type { Db } from '@app/db';
 import type { Config } from './config.ts';
+import { healthRouter } from './features/health/health.routes.ts';
+import { createHealthService } from './features/health/health.service.ts';
 import { createItemsService } from './features/items/items.service.ts';
 import { itemsRouter } from './features/items/items.routes.ts';
 import { errorHandler, notFoundHandler } from './middleware/error-handler.ts';
-import { healthRouter } from './routes/health.ts';
 
 export interface AppDeps {
   config: Config;
@@ -18,7 +19,11 @@ export interface AppDeps {
   logger: Logger;
 }
 
-/** Builds the Express app from its dependencies. No side effects, so tests can create one freely. */
+/**
+ * Builds the Express app from its dependencies. This is the composition root: the only place
+ * that creates services from the database and mounts their routers. No side effects, so tests
+ * can create one freely.
+ */
 export function createApp({ config, db, logger }: AppDeps): Express {
   const app = express();
 
@@ -37,7 +42,7 @@ export function createApp({ config, db, logger }: AppDeps): Express {
     });
   }
 
-  app.use('/health', healthRouter(db, config.VERCEL_GIT_COMMIT_SHA ?? 'dev'));
+  app.use('/health', healthRouter(createHealthService(db, config.VERCEL_GIT_COMMIT_SHA ?? 'dev')));
   app.use('/items', itemsRouter(createItemsService(db)));
 
   app.use(notFoundHandler);
