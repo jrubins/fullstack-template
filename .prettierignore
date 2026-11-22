@@ -1,0 +1,8 @@
+pnpm-lock.yaml
+**/dist
+**/storybook-static
+**/.vercel
+**/routeTree.gen.ts
+packages/db/migrations
+packages/db/src/contract.json
+packages/db/src/contract.d.ts

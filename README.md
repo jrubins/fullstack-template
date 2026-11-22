@@ -1,0 +1,161 @@
+# Full-stack TypeScript monorepo template
+
+A starting point for web apps: a React frontend on Vercel's CDN, an Express API on Vercel
+Functions, Postgres on Neon, and Sentry for errors, tracing, logs and metrics.
+The example "items" feature runs through every layer, so the wiring is easy to follow.
+Replace it with your own features.
+
+## Stack
+
+| Area           | Choice                                                                                    |
+| -------------- | ----------------------------------------------------------------------------------------- |
+| Runtime        | Node 26 LTS, running TypeScript directly via built-in type stripping (no build step)      |
+| Monorepo       | pnpm 12 workspaces, a version catalog, TypeScript project references                      |
+| Language       | TypeScript 7 (native compiler) for type-checking; TypeScript 6 only for typed lint rules  |
+| Web            | React 19, Vite 8, TanStack Router, Query, Form and Charts, Tailwind CSS 4, shadcn/ui      |
+| Component docs | Storybook 10 (with the accessibility addon)                                               |
+| API            | Express 5, Zod 4, pino, helmet                                                            |
+| Database       | Postgres 19, Prisma ORM 8 (release candidate)                                             |
+| Env/secrets    | dotenvx                                                                                   |
+| Monitoring     | Sentry: errors, tracing, logs and metrics (API); errors, tracing and session replay (web) |
+| Tests          | Vitest, Testing Library, Supertest against a real Postgres                                |
+| Hosting        | Vercel (web and API as two projects), Neon (Postgres)                                     |
+
+## Layout
+
+```
+apps/
+  api/        Express API. src/ is the app; api/index.ts is the Vercel Function entry
+  web/        React SPA. src/routes is file-based routing; src/components/ui is shadcn
+packages/
+  shared/     Zod schemas and types shared by the API and web (the API contract)
+  db/         Prisma contract, migrations and the database client
+docker/       Local Postgres init scripts
+```
+
+Workspace packages export their TypeScript source directly. Node strips types at runtime and
+Vite bundles them, so there is nothing to build between packages.
+
+## Getting started
+
+Requirements: Node 26.13.1+ (see `.nvmrc`), pnpm 12 (`npm i -g pnpm@12`; Node 26 no longer
+ships corepack), and Docker.
+
+```sh
+pnpm install
+cp .env.example .env
+pnpm db:up          # Postgres 19 in Docker (creates the app and app_test databases)
+pnpm db:migrate     # apply migrations
+pnpm dev            # API on http://localhost:3000, web on http://localhost:5173
+```
+
+## Scripts
+
+| Command           | What it does                                                      |
+| ----------------- | ----------------------------------------------------------------- |
+| `pnpm dev`        | Runs API (`node --watch`) and web (Vite) together                 |
+| `pnpm check`      | Everything CI runs locally: typecheck, lint, format check, tests  |
+| `pnpm typecheck`  | `tsc -b` with TypeScript 7 across all projects                    |
+| `pnpm lint`       | ESLint with type-aware rules                                      |
+| `pnpm format`     | Prettier                                                          |
+| `pnpm test`       | All tests. API tests use `TEST_DATABASE_URL` and migrate it first |
+| `pnpm storybook`  | Storybook on http://localhost:6006                                |
+| `pnpm db:up/down` | Start/stop local Postgres                                         |
+| `pnpm db:migrate` | Apply migrations to `DATABASE_URL`                                |
+
+## Conventions
+
+**Node type stripping.** API and package code runs as-is in Node, so only _erasable_
+TypeScript is allowed: no `enum`, `namespace` or constructor parameter properties. Use
+`as const` objects or unions instead. The compiler enforces this (`erasableSyntaxOnly`).
+Relative imports in Node code include the `.ts` extension. Web code is bundled by Vite and
+uses extensionless imports and the `@/` alias.
+
+**One contract.** Request and response shapes live in `packages/shared` as Zod schemas. The
+API validates input with them. The web app validates responses (`apiRequest`) and forms
+(TanStack Form takes the same schema).
+
+**API layers.** `routes` (HTTP and validation) → `service` (logic) → `db`. Throw `HttpError`
+for expected failures. The error handler turns anything thrown into
+`{ error: { code, message, details? } }` and hides internals on 5xx.
+
+**Adding UI components.** `pnpm dlx shadcn@latest add <component>` from `apps/web`. Current
+shadcn components import `cn` from the [`cn`](https://github.com/shadcn-ui/cn) package
+(shadcn's replacement for clsx + tailwind-merge).
+
+## Database workflow (Prisma 8)
+
+The schema is the _contract_ in `packages/db/src/contract.prisma`.
+
+```sh
+pnpm --filter @app/db emit                       # regenerate contract.json / contract.d.ts
+pnpm --filter @app/db migration:plan --name <x>  # write a migration from the contract change
+pnpm db:migrate                                  # apply it
+```
+
+Commit the contract, the emitted files and the migration. CI fails if the emitted files are
+stale, or if the contract has changes that no migration covers (`prisma db verify`).
+Prisma's CLI telemetry and AI-agent skill prompts are switched off in `packages/db/prisma.env`.
+
+## Environment variables
+
+Everything is listed with comments in `.env.example`. Locally, dotenvx loads `.env` into each
+script. Only `VITE_*` variables reach the browser. To commit secrets safely instead of keeping
+a local file, use `pnpm exec dotenvx encrypt` and keep `.env.keys` out of git (it's ignored).
+
+## Monitoring (Sentry)
+
+Sentry stays off until a DSN is set (`SENTRY_DSN` for the API, `VITE_SENTRY_DSN` for the web).
+
+- **API:** errors (5xx only), request tracing including Express middleware, `pg` and Prisma
+  spans, pino logs sent to Sentry Logs, and custom metrics (`Sentry.metrics.count(...)`, see
+  the items service). `src/instrument.ts` must load before the app: both entry points import
+  it first and then load the app with a dynamic `import()`.
+- **Web:** errors (including React render errors), page-load and navigation tracing via the
+  TanStack Router integration, and session replay. Replays are recorded only when an error
+  happens by default, with all text masked and all media blocked.
+- **Distributed tracing:** the web app adds trace headers to API requests only, so a page
+  load and the API calls it makes appear as one trace.
+- **Privacy:** user details, cookies and request bodies are not collected (`dataCollection`
+  in both `Sentry.init` calls).
+- **Source maps:** set `SENTRY_AUTH_TOKEN`, `SENTRY_ORG` and `SENTRY_PROJECT` in the web
+  project's Vercel build environment. Maps are uploaded and then deleted, never served.
+
+## Deploying
+
+Create **two Vercel projects** from this repo:
+
+1. **Web:** Root Directory `apps/web`. Settings come from `apps/web/vercel.json`. Set
+   `VITE_API_URL` (the API's URL) and the `VITE_SENTRY_*` variables.
+2. **API:** Root Directory `apps/api`. Settings come from `apps/api/vercel.json` (every path
+   goes to the Express app in `api/index.ts`). Set `DATABASE_URL` (Neon's **pooled**
+   connection string), `CORS_ORIGINS` (the web URL) and the `SENTRY_*` variables.
+
+**Database:** create a Neon project on Postgres 19, preferably through Vercel's Neon
+integration, which can give each preview deployment its own database branch. Run migrations
+against it with `DATABASE_URL=<neon url> pnpm db:migrate`.
+
+Vercel uses Node 26 from the `engines` field in each package.json.
+
+## Using this as a GitHub template
+
+1. On GitHub: **Settings → General → Template repository**. New repos then come from
+   **Use this template**.
+2. In a new repo, rename the `@app/*` package scope if you like (search for `@app/`), update
+   the root `package.json` name and the `<title>` in `apps/web/index.html`, and replace the
+   example `Item` model, routes, pages and stories.
+
+## Notes and caveats
+
+- **Prisma 8 is a release candidate** (`prisma` 8.0.0-rc.34, `@prisma/orm-postgres`
+  8.0.0-rc.24), pinned exactly. Move to 8.0.0 when it ships.
+- **Two TypeScript versions.** The `typescript` package is 6.0.3 because typescript-eslint,
+  Storybook and editors need the TS 6 compiler API, which TS 7 no longer has. TypeScript
+  7.0.2 is installed as `typescript7` and runs `pnpm typecheck`.
+- **API on Vercel uses the plain Node runtime,** not the Express framework preset. That
+  preset's forced type-check resolves ESM imports as CommonJS and fails on packages with dual
+  typings (e.g. helmet). Our own `tsc` already checks types.
+- **`pg` is overridden to 8.23.1** in `pnpm-workspace.yaml`, because Prisma 8 RC pins older
+  versions. One copy also means one thing for Sentry to instrument.
+- **pnpm 12 blocks install scripts** unless approved: only `esbuild` is allowed
+  (`allowBuilds`). Prisma's AI-agent skills are declined (`permissions`).

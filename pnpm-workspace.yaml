@@ -1,0 +1,27 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Pin exact versions; bump deliberately (e.g. `pnpm up -r --latest`).
+saveExact: true
+
+# Versions shared by several workspace packages live here once.
+catalog:
+  '@types/node': 26.6.6
+  typescript: 6.0.3
+  vitest: 5.1.1
+  zod: 4.6.7
+
+allowBuilds:
+  esbuild: true
+
+permissions:
+  '@prisma/orm-postgres':
+    skills: false
+  prisma:
+    skills: false
+
+# Prisma 8 RC pins older pg versions; use one current copy everywhere (also what Sentry instruments).
+overrides:
+  pg: 8.23.1
+  '@types/pg': 8.23.1

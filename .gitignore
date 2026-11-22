@@ -1,0 +1,17 @@
+node_modules/
+dist/
+build/
+coverage/
+storybook-static/
+*.tsbuildinfo
+.tsbuild/
+.vercel/
+.DS_Store
+*.log
+
+# env: commit .env.example (and dotenvx-encrypted .env files if you use encryption),
+# never commit plain secrets or the dotenvx private keys
+.env
+.env.*
+!.env.example
+.env.keys

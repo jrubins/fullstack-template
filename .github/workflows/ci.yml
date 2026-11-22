@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:19.0
+        env:
+          POSTGRES_USER: app
+          POSTGRES_PASSWORD: app
+          POSTGRES_DB: app_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U app -d app_test"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      DATABASE_URL: postgresql://app:app@localhost:5432/app_test
+      TEST_DATABASE_URL: postgresql://app:app@localhost:5432/app_test
+      PRISMA_DISABLE_TELEMETRY: '1'
+      STORYBOOK_DISABLE_TELEMETRY: '1'
+
+    steps:
+      - uses: actions/checkout@v7
+
+      # Uses the pnpm version pinned in package.json ("packageManager").
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Typecheck (TypeScript 7)
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Format
+        run: pnpm format:check
+
+      - name: Check the emitted Prisma contract is committed
+        run: |
+          pnpm --filter @app/db emit
+          git diff --exit-code -- packages/db/src
+          pnpm --filter @app/db migration:check
+
+      # API tests apply all migrations to the test database first.
+      - name: Test
+        run: pnpm test
+
+      - name: Check migrations match the contract
+        run: pnpm --filter @app/db verify
+
+      - name: Build web
+        run: pnpm --filter @app/web build
+
+      - name: Build Storybook
+        run: pnpm --filter @app/web build-storybook --quiet
