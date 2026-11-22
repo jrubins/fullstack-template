@@ -6,7 +6,15 @@
   "engines": {
     "node": ">=26.13.1"
   },
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": "26.13.1",
+      "onFail": "download"
+    }
+  },
   "scripts": {
+    "bootstrap": "node scripts/bootstrap.ts",
     "dev": "pnpm --parallel --filter \"./apps/*\" dev",
     "build": "pnpm -r build",
     "typecheck": "node node_modules/typescript7/bin/tsc -b",
@@ -18,7 +26,8 @@
     "db:up": "docker compose up -d --wait db",
     "db:down": "docker compose down",
     "db:migrate": "pnpm --filter @app/db migrate",
-    "storybook": "pnpm --filter @app/web storybook"
+    "storybook": "pnpm --filter @app/web storybook",
+    "e2e": "pnpm --filter @app/e2e e2e"
   },
   "devDependencies": {
     "@dotenvx/dotenvx": "2.38.2",

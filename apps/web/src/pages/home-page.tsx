@@ -11,9 +11,12 @@ export function HomePage() {
 
   return (
     <div className="space-y-6">
+      <h1 className="text-2xl font-semibold">Overview</h1>
       <Card>
         <CardHeader>
-          <CardTitle>API status</CardTitle>
+          <CardTitle>
+            <h2>API status</h2>
+          </CardTitle>
           <CardDescription>Live check of the API and its database.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -34,7 +37,9 @@ export function HomePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Items per day</CardTitle>
+          <CardTitle>
+            <h2>Items per day</h2>
+          </CardTitle>
           <CardDescription>Example TanStack Charts chart.</CardDescription>
         </CardHeader>
         <CardContent>

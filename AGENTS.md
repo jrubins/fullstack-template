@@ -4,12 +4,25 @@ Instructions for AI coding agents (and humans) working in this repo. Follow the 
 patterns: the example `items` feature shows every layer, so copy its shape for new features.
 The README explains the setup; this file is the working rules.
 
+## Getting set up
+
+```sh
+pnpm install && pnpm bootstrap   # .env, Postgres in Docker, migrations, test browser
+```
+
+`pnpm bootstrap` is safe to rerun and says exactly what is missing (e.g. Docker not running).
+pnpm runs every script on the Node version pinned in `package.json` (`devEngines`),
+downloading it if needed, so the machine's own Node version doesn't matter.
+
 ## Definition of done
 
-A change is done when **`pnpm check` passes** (typecheck, lint, format, all tests) and:
+A change is done when **`pnpm check` and `pnpm e2e` pass** and:
 
-- new behaviour has tests (API: Supertest in `apps/api/test`; web: Vitest + Testing Library)
-- new UI components have a Storybook story next to them (`*.stories.tsx`)
+- new behaviour has tests (API: Supertest in `apps/api/test`; web: Vitest + Testing Library;
+  user flows: Playwright in `apps/e2e/tests`)
+- new UI components have a Storybook story next to them (`*.stories.tsx`); stories run as tests
+- UI changes are checked visually: look at the screenshots `pnpm e2e` saves in
+  `apps/e2e/screenshots/`
 - any change to `packages/db/src/contract.prisma` has an emitted contract and a planned migration
 - new environment variables are in `.env.example`, validated in config, and in the README if
   they affect deployment
@@ -17,7 +30,9 @@ A change is done when **`pnpm check` passes** (typecheck, lint, format, all test
 ## Commands
 
 ```sh
-pnpm check                                    # everything CI runs (needs `pnpm db:up`)
+pnpm check                                    # typecheck, lint, format, unit/API/story tests
+pnpm e2e                                      # end-to-end tests in a real browser
+pnpm e2e tests/items.spec.ts                  # one e2e file (run from apps/e2e)
 pnpm typecheck | pnpm lint | pnpm format | pnpm test
 pnpm --filter @app/api test                   # one package's tests
 pnpm --filter @app/db emit                    # after editing contract.prisma
@@ -45,7 +60,24 @@ apps/web/src/
   features/<name>/        queries.ts (TanStack Query), forms, feature components + stories
   components/ui/          shadcn/ui components (generated, then owned by us)
   lib/                    apiRequest, env, Sentry setup
+apps/e2e/tests/           Playwright end-to-end specs (fixtures.ts: unique(), capture())
+scripts/bootstrap.ts      one-step local setup
 ```
+
+## Verifying your change
+
+Prove it works with the commands, don't assume. What each one proves:
+
+| Command      | Proves                                                                                                                                                                            |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm check` | types, lint/architecture rules, formatting; API behaviour against Postgres; components; every Storybook story renders, passes its `play` test and has no accessibility violations |
+| `pnpm e2e`   | the real web app + API + database work together in Chromium, with no browser console errors                                                                                       |
+
+`pnpm e2e` starts its own API (port 3100) and web app (port 5174) against the test database,
+so it works whether or not `pnpm dev` is running. For a new user-facing feature, add a spec
+that walks the main flow, call `capture('<name>')` at the key states, and look at the saved
+screenshots before calling the work done. To debug a failing e2e test, rerun it with
+`--trace on` and read the error context Playwright prints.
 
 ## Architecture rules
 
@@ -85,7 +117,9 @@ Not enforced by tooling, so check yourself:
    `src/pages/<name>-page.tsx`.
 9. **Route:** `src/routes/<path>.tsx` with a `loader` that calls `ensureQueryData`, and a nav
    link in `components/root-layout.tsx` if needed.
-10. `pnpm check`.
+10. **End-to-end:** `apps/e2e/tests/<name>.spec.ts` walking the main user flow, with
+    `capture()` at key states.
+11. `pnpm check` and `pnpm e2e`, then review the screenshots.
 
 ## Code rules
 
@@ -94,6 +128,8 @@ Not enforced by tooling, so check yourself:
   unions or `as const` objects. Relative imports in Node code end in `.ts`. Web code uses
   extensionless imports and the `@/` alias.
 - **No `.js` files.** Configs and scripts are TypeScript.
+- **Use `pnpm exec <tool>`, never `npx`/`npm`.** npm can't satisfy the pinned Node version
+  (`devEngines`) and errors out on machines with an older Node.
 - **No unused code and no escape hatches.** ESLint rejects `_`-prefixed unused names,
   `@ts-ignore`/`@ts-expect-error`/`@ts-nocheck` and explicit `any`, and ignores
   `eslint-disable` comments entirely. If a type assertion is truly unavoidable (a third-party
@@ -119,7 +155,16 @@ API tests share one database and **run in parallel, with no cleanup**. Every tes
 - never update or delete rows it didn't create
 
 Queries whose order tests rely on need a deterministic tie-breaker (e.g. `createdAt`, then
-`id`). Web tests are colocated (`*.test.ts(x)`) and test components through what users see
+`id`).
+
+End-to-end tests follow the same rules (they share the test database and run in parallel):
+`unique()` from `apps/e2e/tests/fixtures.ts`, set up data through the HTTP API (fast) and test
+the behaviour through the UI. Import `test`/`expect` from `./fixtures.ts`, never from
+`@playwright/test` directly: the fixture fails any test whose page logs a console error. Find
+elements the way users do (`getByRole`, `getByLabel`, `getByText`); if that's impossible, the
+UI probably has an accessibility gap to fix.
+
+Web tests are colocated (`*.test.ts(x)`) and test components through what users see
 (roles, labels, text).
 
 ## Library notes (APIs newer than most training data)
@@ -145,6 +190,9 @@ scales })`; pass a configured scale instance (`scaleLinear().domain([0, max])`) 
   clsx + tailwind-merge).
 
 ## Claude Code
+
+In Claude Code cloud sessions Docker is installed but its daemon isn't started:
+run `(dockerd > /tmp/dockerd.log 2>&1 &)` before `pnpm bootstrap` (it tells you if needed).
 
 `.claude/settings.json` runs `.claude/hooks/format-and-lint.ts` after every file edit:
 Prettier formats the file and ESLint reports remaining problems back immediately. Fix what

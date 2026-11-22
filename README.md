@@ -12,19 +12,19 @@ lints every file Claude edits.
 
 ## Stack
 
-| Area           | Choice                                                                                    |
-| -------------- | ----------------------------------------------------------------------------------------- |
-| Runtime        | Node 26 LTS, running TypeScript directly via built-in type stripping (no build step)      |
-| Monorepo       | pnpm 12 workspaces, a version catalog, TypeScript project references                      |
-| Language       | TypeScript 7 (native compiler) for type-checking; TypeScript 6 only for typed lint rules  |
-| Web            | React 19, Vite 8, TanStack Router, Query, Form and Charts, Tailwind CSS 4, shadcn/ui      |
-| Component docs | Storybook 10 (with the accessibility addon)                                               |
-| API            | Express 5, Zod 4, pino, helmet                                                            |
-| Database       | Postgres 19, Prisma ORM 8 (release candidate)                                             |
-| Env/secrets    | dotenvx                                                                                   |
-| Monitoring     | Sentry: errors, tracing, logs and metrics (API); errors, tracing and session replay (web) |
-| Tests          | Vitest, Testing Library, Supertest against a real Postgres                                |
-| Hosting        | Vercel (web and API as two projects), Neon (Postgres)                                     |
+| Area           | Choice                                                                                                |
+| -------------- | ----------------------------------------------------------------------------------------------------- |
+| Runtime        | Node 26 LTS, running TypeScript directly via built-in type stripping (no build step)                  |
+| Monorepo       | pnpm 12 workspaces, a version catalog, TypeScript project references                                  |
+| Language       | TypeScript 7 (native compiler) for type-checking; TypeScript 6 only for typed lint rules              |
+| Web            | React 19, Vite 8, TanStack Router, Query, Form and Charts, Tailwind CSS 4, shadcn/ui                  |
+| Component docs | Storybook 10 (with the accessibility addon)                                                           |
+| API            | Express 5, Zod 4, pino, helmet                                                                        |
+| Database       | Postgres 19, Prisma ORM 8 (release candidate)                                                         |
+| Env/secrets    | dotenvx                                                                                               |
+| Monitoring     | Sentry: errors, tracing, logs and metrics (API); errors, tracing and session replay (web)             |
+| Tests          | Vitest, Testing Library, Supertest (real Postgres), Storybook stories as tests, Playwright end-to-end |
+| Hosting        | Vercel (web and API as two projects), Neon (Postgres)                                                 |
 
 ## Layout
 
@@ -44,14 +44,14 @@ Vite bundles them, so there is nothing to build between packages.
 
 ## Getting started
 
-Requirements: Node 26.13.1+ (see `.nvmrc`), pnpm 12 (`npm i -g pnpm@12`; Node 26 no longer
-ships corepack), and Docker.
+Requirements: pnpm 12 and Docker. pnpm runs every script on the Node version pinned in
+`package.json` (`devEngines.runtime`, Node 26.13.1) and downloads it if needed, so any
+recent Node works to launch pnpm (`npm i -g pnpm@12`, or corepack on Node versions that
+still include it).
 
 ```sh
 pnpm install
-cp .env.example .env
-pnpm db:up          # Postgres 19 in Docker (creates the app and app_test databases)
-pnpm db:migrate     # apply migrations
+pnpm bootstrap      # .env, Postgres 19 in Docker, migrations, test browser (safe to rerun)
 pnpm dev            # API on http://localhost:3000, web on http://localhost:5173
 ```
 
@@ -60,11 +60,13 @@ pnpm dev            # API on http://localhost:3000, web on http://localhost:5173
 | Command           | What it does                                                      |
 | ----------------- | ----------------------------------------------------------------- |
 | `pnpm dev`        | Runs API (`node --watch`) and web (Vite) together                 |
-| `pnpm check`      | Everything CI runs locally: typecheck, lint, format check, tests  |
+| `pnpm bootstrap`  | One-step setup: .env, Postgres, migrations, Playwright's Chromium |
+| `pnpm check`      | Typecheck, lint, format check, tests                              |
+| `pnpm e2e`        | End-to-end tests: real web + API + database in Chromium           |
 | `pnpm typecheck`  | `tsc -b` with TypeScript 7 across all projects                    |
 | `pnpm lint`       | ESLint with type-aware rules                                      |
 | `pnpm format`     | Prettier                                                          |
-| `pnpm test`       | All tests. API tests use `TEST_DATABASE_URL` and migrate it first |
+| `pnpm test`       | Unit, API (against `TEST_DATABASE_URL`) and Storybook story tests |
 | `pnpm storybook`  | Storybook on http://localhost:6006                                |
 | `pnpm db:up/down` | Start/stop local Postgres                                         |
 | `pnpm db:migrate` | Apply migrations to `DATABASE_URL`                                |

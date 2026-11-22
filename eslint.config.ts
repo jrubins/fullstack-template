@@ -16,6 +16,8 @@ import tseslint from 'typescript-eslint';
 interface ImportRestriction {
   group?: string[];
   regex?: string;
+  /** Restrict only these named imports from the matched modules. */
+  importNames?: string[];
   message: string;
 }
 
@@ -36,6 +38,14 @@ const nodeOnly: ImportRestriction[] = [
 
 const api: ImportRestriction[] = [...nodeOnly];
 
+const e2e: ImportRestriction[] = [
+  ...nodeOnly,
+  {
+    group: ['@app/db', '@app/api', 'pg', '@prisma/*'],
+    message: 'End-to-end tests use the UI and the HTTP API, never the database directly.',
+  },
+];
+
 const apiRoutes: ImportRestriction[] = [
   ...api,
   {
@@ -49,6 +59,15 @@ const apiServices: ImportRestriction[] = [
   {
     group: ['express'],
     message: 'Services are HTTP-agnostic. Throw HttpError for expected failures instead.',
+  },
+];
+
+const e2eSpecs: ImportRestriction[] = [
+  ...e2e,
+  {
+    group: ['@playwright/test'],
+    importNames: ['test', 'expect'],
+    message: 'Import test and expect from ./fixtures.ts: its page fixture fails on console errors.',
   },
 ];
 
@@ -97,6 +116,8 @@ export default defineConfig([
     '**/storybook-static',
     '**/.vercel',
     '**/routeTree.gen.ts',
+    '**/test-results',
+    '**/playwright-report',
     'packages/db/migrations',
     'packages/db/src/contract.d.ts',
   ]),
@@ -123,12 +144,20 @@ export default defineConfig([
   },
 
   {
-    files: ['apps/api/**', 'packages/**', '*.ts', '.claude/**'],
+    files: ['apps/api/**', 'apps/e2e/**', 'packages/**', '*.ts', 'scripts/**', '.claude/**'],
     languageOptions: { globals: globals.node },
   },
 
   // --- API: routes → services → database --------------------------------------------------
   { files: ['apps/api/**/*.ts'], rules: restrictImports(api) },
+
+  // --- End-to-end tests: drive the app through the browser and the public API only --------
+  { files: ['apps/e2e/**/*.ts'], rules: restrictImports(e2e) },
+  {
+    files: ['apps/e2e/tests/**/*.ts'],
+    ignores: ['apps/e2e/tests/fixtures.ts'],
+    rules: restrictImports(e2eSpecs),
+  },
   { files: ['apps/api/src/features/**/*.routes.ts'], rules: restrictImports(apiRoutes) },
   { files: ['apps/api/src/features/**/*.service.ts'], rules: restrictImports(apiServices) },
 
