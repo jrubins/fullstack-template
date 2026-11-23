@@ -72,18 +72,19 @@ WorkOS has no Terraform support for these settings yet, so they're set in the
 [dashboard](https://dashboard.workos.com) and recorded here. The client ID and AuthKit domain
 aren't secrets. They're also in `infra/terraform.tfvars`.
 
-| Setting                                               | Value                                                       | Done |
-| ----------------------------------------------------- | ----------------------------------------------------------- | ---- |
-| Client ID                                             | `client_...`                                                | [ ]  |
-| AuthKit domain                                        | `https://<your-app>.authkit.app`                            | [ ]  |
-| Redirects → Redirect URI (local)                      | `http://localhost:5173`                                     | [ ]  |
-| Redirects → Redirect URI (production)                 | `https://<project>-web.vercel.app`                          | [ ]  |
-| Redirects → Initiate login URI                        | `https://<project>-web.vercel.app/login`                    | [ ]  |
-| Authentication → allowed origins                      | `http://localhost:5173`, `https://<project>-web.vercel.app` | [ ]  |
-| Connect → Configuration → Client ID Metadata Document | Enabled (how Claude registers)                              | [ ]  |
-| Connect → Configuration → Dynamic Client Registration | Enabled (older MCP clients)                                 | [ ]  |
-| Resource Indicators                                   | `https://<project>-api.vercel.app/mcp`, set as default      | [ ]  |
-| Sign-up                                               | Restricted to you, or locked via `allowed_user_ids`         | [ ]  |
+| Setting                                               | Value                                                           | Done |
+| ----------------------------------------------------- | --------------------------------------------------------------- | ---- |
+| Client ID                                             | `client_...`                                                    | [ ]  |
+| AuthKit domain                                        | `https://<your-app>.authkit.app`                                | [ ]  |
+| Redirects → Redirect URI (local)                      | `http://localhost:5173`                                         | [ ]  |
+| Redirects → Redirect URI (production)                 | `https://<project>-web.vercel.app`                              | [ ]  |
+| Redirects → Initiate login URI                        | `https://<project>-web.vercel.app/login`                        | [ ]  |
+| Redirects → Sign-out redirect                         | `https://<project>-web.vercel.app` (sign-out fails without one) | [ ]  |
+| Authentication → **Configure CORS** (allowed origins) | `http://localhost:5173`, `https://<project>-web.vercel.app`     | [ ]  |
+| Connect → Configuration → Client ID Metadata Document | Enabled (how Claude registers)                                  | [ ]  |
+| Connect → Configuration → Dynamic Client Registration | Enabled (older MCP clients)                                     | [ ]  |
+| Resource Indicators                                   | `https://<project>-api.vercel.app/mcp`, set as default          | [ ]  |
+| Sign-up                                               | Restricted to you, or locked via `allowed_user_ids`             | [ ]  |
 
 If Vercel assigned different URLs (the first apply prints `web_url`, `api_url` and
 `mcp_url`), use those here and in `infra/terraform.tfvars`.
