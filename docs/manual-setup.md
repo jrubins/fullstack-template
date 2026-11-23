@@ -19,7 +19,8 @@ Replace `<owner>/<repo>` and `<project>` (your `project_name`) in the links belo
       default branch and protects it.
 - [ ] **WorkOS** account and AuthKit application created ([sign up](https://workos.com)) (see section 3 for its settings).
 - [ ] **HCP Terraform** (free): [sign up](https://app.terraform.io/public/signup/account), then
-      create an organization and a **CLI-driven** workspace named after your project. In the
+      create an organization, or reuse an existing one (free accounts can only create a
+      limited number; one organization holds many workspaces), and a **CLI-driven** workspace named after your project. In the
       workspace, go to **Settings → General → Execution Mode** and choose **Local**.
 - [ ] **Vercel**: [sign up](https://vercel.com/signup) with GitHub, then
       [install the Vercel GitHub app](https://github.com/apps/vercel/installations/new) on
