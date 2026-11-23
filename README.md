@@ -190,6 +190,11 @@ Sentry stays off until a DSN is set (`SENTRY_DSN` for the API, `VITE_SENTRY_DSN`
 
 ## Deploying
 
+**Terraform in [`infra/`](infra/README.md) sets all of this up**: the Neon database, both Vercel
+projects and their environment variables, Sentry projects and GitHub settings. GitHub Actions
+applies it and runs migrations. Fill in `infra/terraform.tfvars` and follow its README. The
+steps below describe what it creates, in case you'd rather do it by hand.
+
 Create **two Vercel projects** from this repo:
 
 1. **Web:** Root Directory `apps/web`. Settings come from `apps/web/vercel.json`. Set
@@ -213,6 +218,7 @@ Vercel uses Node 26 from the `engines` field in each package.json.
 2. In a new repo, rename the `@app/*` package scope if you like (search for `@app/`), update
    the root `package.json` name and the `<title>` in `apps/web/index.html`, and replace the
    example `Item` model, routes, pages and stories.
+3. To deploy, fill in `infra/terraform.tfvars` and follow [`infra/README.md`](infra/README.md).
 
 ## Notes and caveats
 
