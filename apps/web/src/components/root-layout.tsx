@@ -21,7 +21,7 @@ export function RootLayout() {
             Items
           </Link>
         </nav>
-        {user ? <UserMenu user={user} onSignOut={signOut} /> : null}
+        {user ? <UserMenu user={user} onSignOut={() => void signOut()} /> : null}
       </header>
       <main>
         <Outlet />
