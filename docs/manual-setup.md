@@ -26,6 +26,10 @@ Replace `<owner>/<repo>` and `<project>` (your `project_name`) in the links belo
 - [ ] **Vercel**: [sign up](https://vercel.com/signup) with GitHub, then
       [install the Vercel GitHub app](https://github.com/apps/vercel/installations/new) on
       `<owner>/<repo>` only.
+- [ ] **API address in `apps/web/vercel.json`**: replace `<project>` in the `/api/:path*`
+      rewrite with your project name, or with the API's real address once the first apply
+      prints `api_url` (Vercel adds a suffix when the plain name is taken). The browser reaches
+      the API only through this rewrite, so the session cookie stays first-party.
 - [ ] **Neon**: [sign up](https://console.neon.tech/signup). Terraform creates the project.
 - [ ] **Sentry**: [sign up](https://sentry.io/signup/), then copy the **Organization Slug** from
       [Settings → General Settings](https://sentry.io/settings/) into `sentry_organization` in
@@ -47,17 +51,20 @@ Replace `<owner>/<repo>` and `<project>` (your `project_name`) in the links belo
 ## 2. Credentials
 
 All of these are GitHub Actions secrets on this repository, used only by
-`.github/workflows/infra.yml`. Prefer an expiry, and note it here so rotation isn't a surprise.
+`.github/workflows/infra.yml`. The session cookie's encryption password needs no secret:
+Terraform generates it and writes it straight to Vercel (bump `cookie_password_version` in
+`infra/terraform.tfvars` to replace it, which signs everyone out). Prefer an expiry, and note it here so rotation isn't a surprise.
 
-| Secret                    | What it is                                    | Create it at                                                                                    | Permissions                                                                                                | Expires | Last set |
-| ------------------------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | ------- | -------- |
-| `R2_ACCESS_KEY_ID`        | R2 API token: Access Key ID                   | [R2 → Manage API tokens](https://dash.cloudflare.com/?to=/:account/r2/api-tokens)               | Object Read & Write, only the `terraform-state` bucket; **no IP filter** (GitHub runners use changing IPs) |         |          |
-| `R2_SECRET_ACCESS_KEY`    | R2 API token: Secret Access Key (same token)  | Shown once when you create the token above                                                      | (same token)                                                                                               |         |          |
-| `VERCEL_API_TOKEN`        | Vercel access token                           | [Vercel → Account settings → Tokens](https://vercel.com/account/settings/tokens)                | Scope: your personal account (or the team)                                                                 |         |          |
-| `NEON_API_KEY`            | Neon API key                                  | [Neon → Account settings → API keys](https://console.neon.tech/app/settings/api-keys)           | Personal key (the whole account)                                                                           |         |          |
-| `SENTRY_AUTH_TOKEN`       | Sentry personal token for Terraform           | [Sentry → User settings → Personal Tokens](https://sentry.io/settings/account/api/auth-tokens/) | `org:read`, `project:admin`, `team:admin`                                                                  |         |          |
-| `INFRA_GITHUB_TOKEN`      | Fine-grained personal access token            | [GitHub → Fine-grained tokens → New](https://github.com/settings/personal-access-tokens/new)    | Only `<owner>/<repo>`; Administration: RW                                                                  |         |          |
-| `SENTRY_SOURCEMAPS_TOKEN` | Optional: Sentry organization token (uploads) | [Sentry → Settings → Auth Tokens](https://sentry.io/settings/auth-tokens/)                      | Created with the default organization token scopes                                                         |         |          |
+| Secret                    | What it is                                                               | Create it at                                                                                    | Permissions                                                                                                | Expires | Last set |
+| ------------------------- | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| `R2_ACCESS_KEY_ID`        | R2 API token: Access Key ID                                              | [R2 → Manage API tokens](https://dash.cloudflare.com/?to=/:account/r2/api-tokens)               | Object Read & Write, only the `terraform-state` bucket; **no IP filter** (GitHub runners use changing IPs) |         |          |
+| `R2_SECRET_ACCESS_KEY`    | R2 API token: Secret Access Key (same token)                             | Shown once when you create the token above                                                      | (same token)                                                                                               |         |          |
+| `VERCEL_API_TOKEN`        | Vercel access token                                                      | [Vercel → Account settings → Tokens](https://vercel.com/account/settings/tokens)                | Scope: your personal account (or the team)                                                                 |         |          |
+| `NEON_API_KEY`            | Neon API key                                                             | [Neon → Account settings → API keys](https://console.neon.tech/app/settings/api-keys)           | Personal key (the whole account)                                                                           |         |          |
+| `SENTRY_AUTH_TOKEN`       | Sentry personal token for Terraform                                      | [Sentry → User settings → Personal Tokens](https://sentry.io/settings/account/api/auth-tokens/) | `org:read`, `project:admin`, `team:admin`                                                                  |         |          |
+| `INFRA_GITHUB_TOKEN`      | Fine-grained personal access token                                       | [GitHub → Fine-grained tokens → New](https://github.com/settings/personal-access-tokens/new)    | Only `<owner>/<repo>`; Administration: RW                                                                  |         |          |
+| `WORKOS_API_KEY`          | WorkOS API key: the API signs browsers in with it (server-side sessions) | [WorkOS → API Keys](https://dashboard.workos.com/api-keys)                                      | The same WorkOS environment as your client ID (Staging or Production)                                      |         |          |
+| `SENTRY_SOURCEMAPS_TOKEN` | Optional: Sentry organization token (uploads)                            | [Sentry → Settings → Auth Tokens](https://sentry.io/settings/auth-tokens/)                      | Created with the default organization token scopes                                                         |         |          |
 
 Also set `sentry_sourcemaps_token_version = 1` in `infra/terraform.tfvars` if you add
 `SENTRY_SOURCEMAPS_TOKEN`.
@@ -72,19 +79,26 @@ WorkOS has no Terraform support for these settings yet, so they're set in the
 [dashboard](https://dashboard.workos.com) and recorded here. The client ID and AuthKit domain
 aren't secrets. They're also in `infra/terraform.tfvars`.
 
-| Setting                                                      | Value                                                           | Done |
-| ------------------------------------------------------------ | --------------------------------------------------------------- | ---- |
-| Client ID                                                    | `client_...`                                                    | [ ]  |
-| AuthKit domain                                               | `https://<your-app>.authkit.app`                                | [ ]  |
-| Redirects → Redirect URI (local)                             | `http://localhost:5173`                                         | [ ]  |
-| Redirects → Redirect URI (production)                        | `https://<project>-web.vercel.app`                              | [ ]  |
-| Redirects → Initiate login URI                               | `https://<project>-web.vercel.app/login`                        | [ ]  |
-| Redirects → Sign-out redirect                                | `https://<project>-web.vercel.app` (sign-out fails without one) | [ ]  |
-| CORS / allowed web origins (search the dashboard for "CORS") | `http://localhost:5173`, `https://<project>-web.vercel.app`     | [ ]  |
-| Client ID Metadata Document (search "Client ID Metadata")    | Enabled (how Claude registers)                                  | [ ]  |
-| Dynamic Client Registration (search "Dynamic Client")        | Enabled (older MCP clients)                                     | [ ]  |
-| Resource Indicators                                          | `https://<project>-api.vercel.app/mcp`, set as default          | [ ]  |
-| Sign-up                                                      | Restricted to you, or locked via `allowed_user_ids`             | [ ]  |
+Every setting below belongs to one WorkOS environment (Staging or Production, switched at the
+top of the dashboard): the one your client ID and API key come from. A redirect URI saved in the
+other environment gives "redirect URI invalid" at sign-in.
+
+| Setting                                                   | Value                                                                                                  | Done |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ---- |
+| Client ID                                                 | `client_...`                                                                                           | [ ]  |
+| AuthKit domain                                            | `https://<your-app>.authkit.app`                                                                       | [ ]  |
+| Authentication → sign-in methods                          | Turn on Magic Auth (or email + password): new environments may offer only SSO, which blocks sign-in    | [ ]  |
+| Redirects → Redirect URI (local)                          | `http://localhost:5173/api/auth/callback`                                                              | [ ]  |
+| Redirects → Redirect URI (production)                     | `https://<project>-web.vercel.app/api/auth/callback` (sign-in returns to the API, through the web app) | [ ]  |
+| Redirects → Initiate login URI                            | `https://<project>-web.vercel.app/login`                                                               | [ ]  |
+| Redirects → Sign-out redirect                             | `https://<project>-web.vercel.app` (sign-out fails without one)                                        | [ ]  |
+| Client ID Metadata Document (search "Client ID Metadata") | Enabled (how Claude registers)                                                                         | [ ]  |
+| Dynamic Client Registration (search "Dynamic Client")     | Enabled (older MCP clients)                                                                            | [ ]  |
+| Resource Indicators                                       | `https://<project>-api.vercel.app/mcp`, set as default                                                 | [ ]  |
+| Sign-up                                                   | Restricted to you, or locked via `allowed_user_ids`                                                    | [ ]  |
+
+The browser never calls WorkOS directly (sign-in runs on the API), so WorkOS needs no CORS
+setting.
 
 If Vercel assigned different URLs (the first apply prints `web_url`, `api_url` and
 `mcp_url`), use those here and in `infra/terraform.tfvars`.
