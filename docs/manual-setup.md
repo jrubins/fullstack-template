@@ -18,10 +18,11 @@ Replace `<owner>/<repo>` and `<project>` (your `project_name`) in the links belo
 - [ ] **`main` branch** exists. Terraform makes it the
       default branch and protects it.
 - [ ] **WorkOS** account and AuthKit application created ([sign up](https://workos.com)) (see section 3 for its settings).
-- [ ] **HCP Terraform** (free): [sign up](https://app.terraform.io/public/signup/account), then
-      create an organization, or reuse an existing one (free accounts can only create a
-      limited number; one organization holds many workspaces), and a **CLI-driven** workspace named after your project. In the
-      workspace, go to **Settings → General → Execution Mode** and choose **Local**.
+- [ ] **Cloudflare R2** (state storage, free tier): [sign up](https://dash.cloudflare.com/sign-up),
+      then open [R2](https://dash.cloudflare.com/?to=/:account/r2/overview) and enable it (it asks
+      for a payment method even on the free tier). Create a bucket named `terraform-state`; one
+      bucket can hold every project's state, each under its own key (this one:
+      `CHANGE-ME/terraform.tfstate`). Copy your **Account ID** from the R2 overview page.
 - [ ] **Vercel**: [sign up](https://vercel.com/signup) with GitHub, then
       [install the Vercel GitHub app](https://github.com/apps/vercel/installations/new) on
       `<owner>/<repo>` only.
@@ -33,7 +34,8 @@ Replace `<owner>/<repo>` and `<project>` (your `project_name`) in the links belo
       [repository secret](https://github.com/<owner>/<repo>/settings/secrets/actions).
 - [ ] **Repository variables**
       ([Actions variables](https://github.com/<owner>/<repo>/settings/variables/actions)):
-      `TF_CLOUD_ORGANIZATION` = your HCP organization name, `TF_WORKSPACE` = after your project.
+      `TF_STATE_BUCKET` = `terraform-state`, `CLOUDFLARE_ACCOUNT_ID` = your Cloudflare
+      account ID.
 - [ ] **First apply**: [Actions → Infrastructure](https://github.com/<owner>/<repo>/actions/workflows/infra.yml)
       → **Run workflow** on `main`. Then redeploy both Vercel projects once.
 - [ ] **WorkOS production settings** (section 3).
@@ -47,14 +49,15 @@ Replace `<owner>/<repo>` and `<project>` (your `project_name`) in the links belo
 All of these are GitHub Actions secrets on this repository, used only by
 `.github/workflows/infra.yml`. Prefer an expiry, and note it here so rotation isn't a surprise.
 
-| Secret                    | What it is                                    | Create it at                                                                                    | Permissions                                        | Expires | Last set |
-| ------------------------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------- | -------------------------------------------------- | ------- | -------- |
-| `TF_API_TOKEN`            | HCP Terraform user or team token              | [HCP → User settings → Tokens](https://app.terraform.io/app/settings/tokens)                    | Access to the workspace                            |         |          |
-| `VERCEL_API_TOKEN`        | Vercel access token                           | [Vercel → Account settings → Tokens](https://vercel.com/account/settings/tokens)                | Scope: your personal account (or the team)         |         |          |
-| `NEON_API_KEY`            | Neon API key                                  | [Neon → Account settings → API keys](https://console.neon.tech/app/settings/api-keys)           | Personal key (the whole account)                   |         |          |
-| `SENTRY_AUTH_TOKEN`       | Sentry personal token for Terraform           | [Sentry → User settings → Personal Tokens](https://sentry.io/settings/account/api/auth-tokens/) | `org:read`, `project:admin`, `team:admin`          |         |          |
-| `INFRA_GITHUB_TOKEN`      | Fine-grained personal access token            | [GitHub → Fine-grained tokens → New](https://github.com/settings/personal-access-tokens/new)    | Only `<owner>/<repo>`; Administration: RW          |         |          |
-| `SENTRY_SOURCEMAPS_TOKEN` | Optional: Sentry organization token (uploads) | [Sentry → Settings → Auth Tokens](https://sentry.io/settings/auth-tokens/)                      | Created with the default organization token scopes |         |          |
+| Secret                    | What it is                                    | Create it at                                                                                    | Permissions                                            | Expires | Last set |
+| ------------------------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------ | ------- | -------- |
+| `R2_ACCESS_KEY_ID`        | R2 API token: Access Key ID                   | [R2 → Manage API tokens](https://dash.cloudflare.com/?to=/:account/r2/api-tokens)               | Object Read & Write, only the `terraform-state` bucket |         |          |
+| `R2_SECRET_ACCESS_KEY`    | R2 API token: Secret Access Key (same token)  | Shown once when you create the token above                                                      | (same token)                                           |         |          |
+| `VERCEL_API_TOKEN`        | Vercel access token                           | [Vercel → Account settings → Tokens](https://vercel.com/account/settings/tokens)                | Scope: your personal account (or the team)             |         |          |
+| `NEON_API_KEY`            | Neon API key                                  | [Neon → Account settings → API keys](https://console.neon.tech/app/settings/api-keys)           | Personal key (the whole account)                       |         |          |
+| `SENTRY_AUTH_TOKEN`       | Sentry personal token for Terraform           | [Sentry → User settings → Personal Tokens](https://sentry.io/settings/account/api/auth-tokens/) | `org:read`, `project:admin`, `team:admin`              |         |          |
+| `INFRA_GITHUB_TOKEN`      | Fine-grained personal access token            | [GitHub → Fine-grained tokens → New](https://github.com/settings/personal-access-tokens/new)    | Only `<owner>/<repo>`; Administration: RW              |         |          |
+| `SENTRY_SOURCEMAPS_TOKEN` | Optional: Sentry organization token (uploads) | [Sentry → Settings → Auth Tokens](https://sentry.io/settings/auth-tokens/)                      | Created with the default organization token scopes     |         |          |
 
 Also set `sentry_sourcemaps_token_version = 1` in `infra/terraform.tfvars` if you add
 `SENTRY_SOURCEMAPS_TOKEN`.
@@ -89,11 +92,11 @@ If Vercel assigned different URLs (the first apply prints `web_url`, `api_url` a
 
 Fill these in after the first apply.
 
-| What                    | URL |
-| ----------------------- | --- |
-| Web app                 |     |
-| API                     |     |
-| MCP (Claude connector)  |     |
-| Neon project            |     |
-| Sentry projects         |     |
-| HCP Terraform workspace |     |
+| What                   | URL                            |
+| ---------------------- | ------------------------------ |
+| Web app                |                                |
+| API                    |                                |
+| MCP (Claude connector) |                                |
+| Neon project           |                                |
+| Sentry projects        |                                |
+| Terraform state        | `terraform-state` bucket in R2 |
